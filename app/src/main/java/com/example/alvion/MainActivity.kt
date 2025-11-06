@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.Button
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -22,29 +23,29 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
-            PreviewMessageCard()
+            StartSession()
         }
     }
 }
-
-data class Message(val author: String, val body: String)
 
 @Composable
-fun MessageCard(msg: Message) {
-    Row {
-        Image(
-            painter = painterResource(R.drawable.randomscreenshot),
-            contentDescription = "Contact profile picture"
-        )
-        Column {
-            Text(text = msg.author)
-            Text(text = msg.body)
-        }
+fun StartSession(){
+    Button(
+        onClick = {}
+    ) {
+        Text(text = "Start Live Session")
     }
 }
+
+
+
 
 @Preview
 @Composable
-fun PreviewMessageCard(){
-    MessageCard(msg = Message("Tairq", "your mom is a bitch"))
+fun StartSessionPreview(){
+    Button(
+        onClick = {}
+    ) {
+        Text(text = "Start Live Session")
+    }
 }
