@@ -4,18 +4,12 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.compose.foundation.Image
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Button
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.tooling.preview.Preview
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import androidx.navigation.compose.rememberNavController
+import com.example.alvion.ui.StartScreen
+import com.example.alvion.ui.SessionScreen
 import com.example.alvion.ui.theme.ALVIONTheme
 
 class MainActivity : ComponentActivity() {
@@ -23,29 +17,22 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
-            StartSession()
+            ALVIONTheme {
+                AppNav()
+            }
         }
     }
 }
 
 @Composable
-fun StartSession(){
-    Button(
-        onClick = {}
-    ) {
-        Text(text = "Start Live Session")
-    }
-}
-
-
-
-
-@Preview
-@Composable
-fun StartSessionPreview(){
-    Button(
-        onClick = {}
-    ) {
-        Text(text = "Start Live Session")
+private fun AppNav() {
+    val nav = rememberNavController()
+    NavHost(navController = nav, startDestination = "start") {
+        composable("start") {
+            StartScreen(onStart = { nav.navigate("session") })
+        }
+        composable("session") {
+            SessionScreen(onEnd = { nav.popBackStack() })
+        }
     }
 }
