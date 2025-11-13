@@ -39,6 +39,11 @@ android {
     buildFeatures {
         compose = true
     }
+
+
+
+
+
 }
 
 dependencies {
@@ -51,6 +56,7 @@ dependencies {
     implementation(libs.androidx.compose.ui.tooling.preview)
     implementation(libs.androidx.compose.material3)
     implementation(libs.androidx.navigation.compose)
+    implementation(libs.androidx.camera.view)
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
@@ -59,5 +65,13 @@ dependencies {
     debugImplementation(libs.androidx.compose.ui.tooling)
     debugImplementation(libs.androidx.compose.ui.test.manifest)
     implementation("androidx.navigation:navigation-compose:2.9.6")
+
+    val cameraxVersion = "1.3.1"
+
+    implementation ("androidx.camera:camera-core:$cameraxVersion")
+    implementation ("androidx.camera:camera-camera2:$cameraxVersion")
+    implementation ("androidx.camera:camera-lifecycle:$cameraxVersion")
+    implementation ("androidx.camera:camera-view:$cameraxVersion")
+
 
 }

@@ -1,9 +1,17 @@
 package com.example.alvion.ui
 
+import android.Manifest
+import android.content.Context
+import android.content.Intent
+import android.content.pm.PackageManager
 import android.media.AudioAttributes
 import android.media.MediaPlayer
 import android.media.RingtoneManager
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -41,6 +49,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.core.content.ContextCompat
+import com.example.alvion.ui.theme.CameraPreviewBox
+
 
 @Composable
 fun SessionScreen(onEnd: () -> Unit) {
@@ -52,8 +63,21 @@ fun SessionScreen(onEnd: () -> Unit) {
     var showSoundDialog: Boolean by remember { mutableStateOf(false) }
     var soundEnabled: Boolean by remember { mutableStateOf(false) }
 
-    // ---- Looping MediaPlayer using the system notification tone (no raw/ file) ----
     val context = LocalContext.current
+
+    // Emergency call number (fake or your own)
+    val emergencyNumber = "9513034883" // replace with your phone number if desired
+
+    // Permission launcher for CALL_PHONE
+    val callPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        if (isGranted) {
+            makeEmergencyCall(context, emergencyNumber)
+        }
+    }
+
+    // ---- Looping MediaPlayer using the system notification tone (no raw/ file) ----
     val mediaPlayer: MediaPlayer = remember {
         val uri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
         MediaPlayer().apply {
@@ -64,10 +88,11 @@ fun SessionScreen(onEnd: () -> Unit) {
                     .build()
             )
             setDataSource(context, uri)
-            isLooping = true   // <-- keep playing until we stop
+            isLooping = true   // keep playing until we stop
             prepare()          // prepare once up front
         }
     }
+
     // Ensure we stop/release when the composable leaves
     DisposableEffect(Unit) {
         onDispose {
@@ -86,27 +111,19 @@ fun SessionScreen(onEnd: () -> Unit) {
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        // Camera/user panel (placeholder)
+        // Camera/user panel - live preview
         ElevatedCard(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(220.dp),
             shape = RoundedCornerShape(16.dp)
         ) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(MaterialTheme.colorScheme.surfaceVariant),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = Icons.Filled.AccountCircle,
-                    contentDescription = null,
-                    modifier = Modifier.size(96.dp),
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
+            CameraPreviewBox(
+                modifier = Modifier.fillMaxSize(),
+                useFrontCamera = true
+            )
         }
+
 
         // Status + Emergency row
         Row(
@@ -130,8 +147,22 @@ fun SessionScreen(onEnd: () -> Unit) {
                 }
             }
 
+            // ---- Emergency Call card (one-tap call with permission handling) ----
             ElevatedCard(
-                modifier = Modifier.weight(1f),
+                modifier = Modifier
+                    .weight(1f)
+                    .clickable {
+                        val hasPermission = ContextCompat.checkSelfPermission(
+                            context,
+                            Manifest.permission.CALL_PHONE
+                        ) == PackageManager.PERMISSION_GRANTED
+
+                        if (hasPermission) {
+                            makeEmergencyCall(context, emergencyNumber)
+                        } else {
+                            callPermissionLauncher.launch(Manifest.permission.CALL_PHONE)
+                        }
+                    },
                 shape = RoundedCornerShape(12.dp)
             ) {
                 Row(
@@ -139,13 +170,17 @@ fun SessionScreen(onEnd: () -> Unit) {
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
-                    Icon(imageVector = Icons.Filled.Phone, contentDescription = null)
+                    Icon(
+                        imageVector = Icons.Filled.Phone,
+                        contentDescription = "Emergency Call"
+                    )
                     Column {
                         Text("Emergency", style = MaterialTheme.typography.labelLarge)
-                        Text("Call")
+                        Text("Tap to Call")
                     }
                 }
             }
+            // ---------------------------------------------------------------
         }
 
         // Notification type
@@ -167,7 +202,10 @@ fun SessionScreen(onEnd: () -> Unit) {
                         onClick = { vibrateEnabled = !vibrateEnabled },
                         label = { Text("Vibrate") },
                         leadingIcon = {
-                            Icon(imageVector = Icons.Filled.Notifications, contentDescription = null)
+                            Icon(
+                                imageVector = Icons.Filled.Notifications,
+                                contentDescription = null
+                            )
                         },
                         colors = AssistChipDefaults.assistChipColors(
                             containerColor = if (vibrateEnabled)
@@ -191,7 +229,10 @@ fun SessionScreen(onEnd: () -> Unit) {
                         },
                         label = { Text("Sound") },
                         leadingIcon = {
-                            Icon(imageVector = Icons.Filled.Notifications, contentDescription = null)
+                            Icon(
+                                imageVector = Icons.Filled.Notifications,
+                                contentDescription = null
+                            )
                         },
                         colors = AssistChipDefaults.assistChipColors(
                             containerColor = if (soundEnabled)
@@ -210,7 +251,10 @@ fun SessionScreen(onEnd: () -> Unit) {
                         },
                         label = { Text("Notify") },
                         leadingIcon = {
-                            Icon(imageVector = Icons.Filled.Notifications, contentDescription = null)
+                            Icon(
+                                imageVector = Icons.Filled.Notifications,
+                                contentDescription = null
+                            )
                         },
                         colors = AssistChipDefaults.assistChipColors(
                             containerColor = if (notifyEnabled)
@@ -241,7 +285,12 @@ fun SessionScreen(onEnd: () -> Unit) {
             },
             title = { Text("Notification sent") },
             text = { Text("Notify tapped $notifyClicks time${if (notifyClicks == 1) "" else "s"}.") },
-            icon = { Icon(imageVector = Icons.Filled.Notifications, contentDescription = null) }
+            icon = {
+                Icon(
+                    imageVector = Icons.Filled.Notifications,
+                    contentDescription = null
+                )
+            }
         )
     }
 
@@ -266,10 +315,22 @@ fun SessionScreen(onEnd: () -> Unit) {
             },
             title = { Text("Sound") },
             text = { Text("Playing until you turn it off") },
-            icon = { Icon(imageVector = Icons.Filled.Notifications, contentDescription = null) }
+            icon = {
+                Icon(
+                    imageVector = Icons.Filled.Notifications,
+                    contentDescription = null
+                )
+            }
         )
     }
 }
+
+// Helper to perform the emergency call once permission is granted
+private fun makeEmergencyCall(context: Context, emergencyNumber: String) {
+    val intent = Intent(Intent.ACTION_CALL, Uri.parse("tel:$emergencyNumber"))
+    context.startActivity(intent)
+}
+
 
 
 
