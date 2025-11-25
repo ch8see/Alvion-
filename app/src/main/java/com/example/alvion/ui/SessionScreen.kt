@@ -51,6 +51,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import com.example.alvion.ui.theme.CameraPreviewBox
+import androidx.compose.material.icons.filled.Vibration
+import androidx.compose.material.icons.filled.VolumeUp
 
 
 @Composable
@@ -198,13 +200,14 @@ fun SessionScreen(onEnd: () -> Unit) {
                 var notifyEnabled: Boolean by remember { mutableStateOf(false) }
 
                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    // Vibrate chip
                     AssistChip(
                         onClick = { vibrateEnabled = !vibrateEnabled },
                         label = { Text("Vibrate") },
                         leadingIcon = {
                             Icon(
-                                imageVector = Icons.Filled.Notifications,
-                                contentDescription = null
+                                imageVector = Icons.Filled.Vibration,
+                                contentDescription = "Vibrate"
                             )
                         },
                         colors = AssistChipDefaults.assistChipColors(
@@ -230,8 +233,8 @@ fun SessionScreen(onEnd: () -> Unit) {
                         label = { Text("Sound") },
                         leadingIcon = {
                             Icon(
-                                imageVector = Icons.Filled.Notifications,
-                                contentDescription = null
+                                imageVector = Icons.Filled.VolumeUp,
+                                contentDescription = "Sound"
                             )
                         },
                         colors = AssistChipDefaults.assistChipColors(
