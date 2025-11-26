@@ -1,21 +1,23 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:tools="http://schemas.android.com/tools">
+    package="com.example.alvion">
 
-    <!-- Emergency Call Permission-->
+    <!-- Emergency Call Permission (not required for ACTION_DIAL, but ok to keep) -->
     <uses-permission android:name="android.permission.CALL_PHONE" />
 
+    <!-- Vibration permission for Vibrator API -->
+    <uses-permission android:name="android.permission.VIBRATE" />
+
+    <!-- Optional: declare telephony as non-required so app can install on tablets/etc -->
     <uses-feature
         android:name="android.hardware.telephony"
         android:required="false" />
 
-    <!-- camera permission + optional camera hardware -->
+    <!-- Camera permission + optional camera hardware -->
     <uses-permission android:name="android.permission.CAMERA" />
     <uses-feature
         android:name="android.hardware.camera.any"
         android:required="false" />
-
-
 
     <application
         android:allowBackup="true"
@@ -26,6 +28,7 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/Theme.ALVION">
+
         <activity
             android:name=".MainActivity"
             android:exported="true"
@@ -33,10 +36,10 @@
             android:theme="@style/Theme.ALVION">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
-
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
     </application>
 
 </manifest>

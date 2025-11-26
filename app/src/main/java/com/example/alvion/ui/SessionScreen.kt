@@ -1,33 +1,31 @@
 package com.example.alvion.ui
 
-import android.Manifest
 import android.content.Context
 import android.content.Intent
-import android.content.pm.PackageManager
 import android.media.AudioAttributes
 import android.media.MediaPlayer
 import android.media.RingtoneManager
 import android.net.Uri
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
+import android.os.Build
+import android.os.VibrationEffect
+import android.os.Vibrator
+import android.os.VibratorManager
+import android.widget.Toast
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Phone
+import androidx.compose.material.icons.filled.Vibration
+import androidx.compose.material.icons.filled.VolumeUp
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.AssistChipDefaults
@@ -49,11 +47,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.core.content.ContextCompat
 import com.example.alvion.ui.theme.CameraPreviewBox
-import androidx.compose.material.icons.filled.Vibration
-import androidx.compose.material.icons.filled.VolumeUp
-
 
 @Composable
 fun SessionScreen(onEnd: () -> Unit) {
@@ -67,31 +61,55 @@ fun SessionScreen(onEnd: () -> Unit) {
 
     val context = LocalContext.current
 
-    // Emergency call number (fake or your own)
-    val emergencyNumber = "9513034883" // replace with your phone number if desired
+    // Vibrate dialog state
+    var showVibrateDialog: Boolean by remember { mutableStateOf(false) }
+    var vibrateEnabled: Boolean by remember { mutableStateOf(false) }
 
-    // Permission launcher for CALL_PHONE
-    val callPermissionLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.RequestPermission()
-    ) { isGranted ->
-        if (isGranted) {
-            makeEmergencyCall(context, emergencyNumber)
+    // Vibrator instance (handles old + new APIs)
+    val vibrator: Vibrator? = remember {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            val vManager =
+                context.getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as VibratorManager
+            vManager.defaultVibrator
+        } else {
+            @Suppress("DEPRECATION")
+            context.getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
         }
     }
 
+    // Emergency call number
+    val emergencyNumber = "9513034883" // replace with your own number if you want
+
     // ---- Looping MediaPlayer using the system notification tone (no raw/ file) ----
     val mediaPlayer: MediaPlayer = remember {
-        val uri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
-        MediaPlayer().apply {
-            setAudioAttributes(
-                AudioAttributes.Builder()
-                    .setUsage(AudioAttributes.USAGE_NOTIFICATION)
-                    .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
-                    .build()
-            )
-            setDataSource(context, uri)
-            isLooping = true   // keep playing until we stop
-            prepare()          // prepare once up front
+        val uri: Uri? = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
+            ?: RingtoneManager.getDefaultUri(RingtoneManager.TYPE_RINGTONE)
+
+        if (uri == null) {
+            // If we can’t get any system sound, tell the user once
+            Toast.makeText(context, "No system notification sound found", Toast.LENGTH_SHORT).show()
+            MediaPlayer() // dummy, won't play
+        } else {
+            MediaPlayer().apply {
+                try {
+                    setAudioAttributes(
+                        AudioAttributes.Builder()
+                            .setUsage(AudioAttributes.USAGE_NOTIFICATION)
+                            .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                            .build()
+                    )
+                    setDataSource(context, uri)
+                    isLooping = true   // keep playing until we stop
+                    prepare()          // prepare once up front
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                    Toast.makeText(
+                        context,
+                        "Failed to prepare sound: ${e.message}",
+                        Toast.LENGTH_SHORT
+                    ).show()
+                }
+            }
         }
     }
 
@@ -100,8 +118,12 @@ fun SessionScreen(onEnd: () -> Unit) {
         onDispose {
             try {
                 if (mediaPlayer.isPlaying) mediaPlayer.stop()
-            } catch (_: IllegalStateException) { }
+            } catch (_: IllegalStateException) {
+            }
             mediaPlayer.release()
+
+            // Stop vibration if it's running
+            vibrator?.cancel()
         }
     }
     // -----------------------------------------------------------------------------
@@ -117,7 +139,7 @@ fun SessionScreen(onEnd: () -> Unit) {
         ElevatedCard(
             modifier = Modifier
                 .fillMaxWidth()
-                .weight(1f),                 // ← instead of .height(550.dp)
+                .weight(1f),
             shape = RoundedCornerShape(16.dp)
         ) {
             CameraPreviewBox(
@@ -125,7 +147,6 @@ fun SessionScreen(onEnd: () -> Unit) {
                 useFrontCamera = true
             )
         }
-
 
         // Status + Emergency row
         Row(
@@ -149,23 +170,13 @@ fun SessionScreen(onEnd: () -> Unit) {
                 }
             }
 
-            // ---- Emergency Call card (one-tap call with permission handling) ----
+            // ---- Emergency "call" card (opens dialer, user taps call) ----
             ElevatedCard(
-                modifier = Modifier
-                    .weight(1f)
-                    .clickable {
-                        val hasPermission = ContextCompat.checkSelfPermission(
-                            context,
-                            Manifest.permission.CALL_PHONE
-                        ) == PackageManager.PERMISSION_GRANTED
-
-                        if (hasPermission) {
-                            makeEmergencyCall(context, emergencyNumber)
-                        } else {
-                            callPermissionLauncher.launch(Manifest.permission.CALL_PHONE)
-                        }
-                    },
-                shape = RoundedCornerShape(12.dp)
+                modifier = Modifier.weight(1f),
+                shape = RoundedCornerShape(12.dp),
+                onClick = {
+                    makeEmergencyCall(context, emergencyNumber)
+                }
             ) {
                 Row(
                     modifier = Modifier.padding(12.dp),
@@ -178,7 +189,7 @@ fun SessionScreen(onEnd: () -> Unit) {
                     )
                     Column {
                         Text("Emergency", style = MaterialTheme.typography.labelLarge)
-                        Text("Tap to Call")
+                        Text("Tap to call")
                     }
                 }
             }
@@ -196,13 +207,28 @@ fun SessionScreen(onEnd: () -> Unit) {
             ) {
                 Text("Notification Type", style = MaterialTheme.typography.titleMedium)
 
-                var vibrateEnabled: Boolean by remember { mutableStateOf(true) }
                 var notifyEnabled: Boolean by remember { mutableStateOf(false) }
 
                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    // Vibrate chip
+                    // Vibrate chip — start vibrating and show dialog
                     AssistChip(
-                        onClick = { vibrateEnabled = !vibrateEnabled },
+                        onClick = {
+                            vibrateEnabled = true
+                            showVibrateDialog = true
+
+                            vibrator?.let { vib ->
+                                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                                    // pattern: vibrate, pause, vibrate... until we cancel
+                                    val pattern = longArrayOf(0, 400, 300, 400, 300)
+                                    val effect =
+                                        VibrationEffect.createWaveform(pattern, 0) // repeat
+                                    vib.vibrate(effect)
+                                } else {
+                                    @Suppress("DEPRECATION")
+                                    vib.vibrate(longArrayOf(0, 400, 300, 400, 300), 0)
+                                }
+                            }
+                        },
                         label = { Text("Vibrate") },
                         leadingIcon = {
                             Icon(
@@ -222,12 +248,30 @@ fun SessionScreen(onEnd: () -> Unit) {
                     AssistChip(
                         onClick = {
                             soundEnabled = true // visual only
+
                             try {
                                 if (!mediaPlayer.isPlaying) {
                                     mediaPlayer.seekTo(0)
                                     mediaPlayer.start()
+                                    Toast.makeText(context, "Playing sound…", Toast.LENGTH_SHORT)
+                                        .show()
+                                } else {
+                                    // already playing
+                                    Toast.makeText(
+                                        context,
+                                        "Sound already playing",
+                                        Toast.LENGTH_SHORT
+                                    ).show()
                                 }
-                            } catch (_: IllegalStateException) { }
+                            } catch (e: IllegalStateException) {
+                                e.printStackTrace()
+                                Toast.makeText(
+                                    context,
+                                    "Error starting sound: ${e.message}",
+                                    Toast.LENGTH_SHORT
+                                ).show()
+                            }
+
                             showSoundDialog = true
                         },
                         label = { Text("Sound") },
@@ -307,7 +351,8 @@ fun SessionScreen(onEnd: () -> Unit) {
                         try {
                             if (mediaPlayer.isPlaying) mediaPlayer.pause()
                             mediaPlayer.seekTo(0)
-                        } catch (_: IllegalStateException) { }
+                        } catch (_: IllegalStateException) {
+                        }
                         soundEnabled = false
                         showSoundDialog = false
                     }
@@ -326,15 +371,49 @@ fun SessionScreen(onEnd: () -> Unit) {
             }
         )
     }
+
+    // Vibrate popup with "Turn off vibration"
+    if (showVibrateDialog) {
+        AlertDialog(
+            onDismissRequest = { showVibrateDialog = false },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        vibrator?.cancel()
+                        vibrateEnabled = false
+                        showVibrateDialog = false
+                    }
+                ) { Text("Turn off vibration") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showVibrateDialog = false }) { Text("Close") }
+            },
+            title = { Text("Vibration") },
+            text = { Text("Phone is vibrating until you turn it off.") },
+            icon = {
+                Icon(
+                    imageVector = Icons.Filled.Vibration,
+                    contentDescription = null
+                )
+            }
+        )
+    }
 }
 
-// Helper to perform the emergency call once permission is granted
+// Helper to open the dialer with the emergency number (NO permission needed)
 internal fun makeEmergencyCall(context: Context, emergencyNumber: String) {
-    val intent = Intent(Intent.ACTION_CALL, Uri.parse("tel:$emergencyNumber"))
-    context.startActivity(intent)
+    if (emergencyNumber.isBlank()) return
+
+    val intent = Intent(Intent.ACTION_DIAL).apply {
+        data = Uri.parse("tel:$emergencyNumber")
+        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+    }
+
+    try {
+        context.startActivity(intent)
+    } catch (e: Exception) {
+        e.printStackTrace()
+        Toast.makeText(context, "Unable to open dialer", Toast.LENGTH_SHORT).show()
+    }
 }
-
-
-
-
 
