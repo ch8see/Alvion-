@@ -117,10 +117,9 @@ fun SessionScreen(onEnd: () -> Unit) {
         ElevatedCard(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(550.dp),
+                .weight(1f),                 // ← instead of .height(550.dp)
             shape = RoundedCornerShape(16.dp)
-        )
-        {
+        ) {
             CameraPreviewBox(
                 modifier = Modifier.fillMaxSize(),
                 useFrontCamera = true
@@ -330,7 +329,7 @@ fun SessionScreen(onEnd: () -> Unit) {
 }
 
 // Helper to perform the emergency call once permission is granted
-private fun makeEmergencyCall(context: Context, emergencyNumber: String) {
+internal fun makeEmergencyCall(context: Context, emergencyNumber: String) {
     val intent = Intent(Intent.ACTION_CALL, Uri.parse("tel:$emergencyNumber"))
     context.startActivity(intent)
 }
